@@ -24,64 +24,65 @@ const teamSchema = new Schema({
 })
 
 const Team = mongoose.model('Team', teamSchema);
-const weeks = [];
+
 const seasons = ['2016', '2017', '2018'];
 const teams = {};
 
-seasons.forEach(season => {
-  axios.get(`https://api.ngs.nfl.com/league/schedule?season=${season}&seasonType=REG`)
-  .then(res => {
-    
-    const firstGameOfTheSeason = res.data.reduce((currentMin, value) => (
-      currentMin.isoTime < value.isoTime ? currentMin : value 
-    ))
+Promise.all(seasons.map(season => axios.get(`https://api.ngs.nfl.com/league/schedule?season=${season}&seasonType=REG`)))
+.then(response => {
+    response.forEach(res => {
+      const firstGameOfTheSeason = res.data.reduce((currentMin, value) => (
+        currentMin.isoTime < value.isoTime ? currentMin : value 
+      ));
 
-    const weeks = populateWeeks(firstGameOfTheSeason.isoTime)
-
-    res.data.forEach(game => {
-      if (!teams[game.homeNickname]){
-
-        //create new team in team object
-        teams[game.homeNickname] = {
-          teamId: game.homeTeam.teamId,
-          seasons: {
-            [seasons[0]]: [],
-            [seasons[1]]: [],
-            [seasons[2]]: [],
-          }
-        };
-      }
-
-      const weekScore = getWeekandScore('home', game, weeks);  //return {week3: {opponent: chiefs, gameId: 123, Q1: 2, ...}}
-      teams[game.homeNickname].seasons[season].push(weekScore);
-
-      if(!teams[game.visitorNickname]) {
-        teams[game.visitorNickname] = {
-          teamId: game.visitorTeam.teamId,
-          seasons: {
-            [seasons[0]]: [],
-            [seasons[1]]: [],
-            [seasons[2]]: [],
-          }
-        };
-      }
-
-      const weekScore1 = getWeekandScore('visitor', game, weeks);  //return {week3: {opponent: chiefs, gameId: 123, Q1: 2, ...}}
-      teams[game.visitorNickname].seasons[season].push(weekScore1); 
+      const season = moment(firstGameOfTheSeason.isoTime).year()
+  
+      const weeks = populateWeeks(firstGameOfTheSeason.isoTime)
+  
+      res.data.forEach(game => {
+        if (!teams[game.homeNickname]){
+  
+          //create new team in team object
+          teams[game.homeNickname] = {
+            teamId: game.homeTeam.teamId,
+            seasons: {
+              [seasons[0]]: [],
+              [seasons[1]]: [],
+              [seasons[2]]: [],
+            }
+          };
+        }
+  
+        const weekScore = getWeekandScore('home', game, weeks);  //return {week3: {opponent: chiefs, gameId: 123, Q1: 2, ...}}
+        teams[game.homeNickname].seasons[season].push(weekScore);
+  
+        if(!teams[game.visitorNickname]) {
+          teams[game.visitorNickname] = {
+            teamId: game.visitorTeam.teamId,
+            seasons: {
+              [seasons[0]]: [],
+              [seasons[1]]: [],
+              [seasons[2]]: [],
+            }
+          };
+        }
+  
+        const weekScore1 = getWeekandScore('visitor', game, weeks);  //return {week3: {opponent: chiefs, gameId: 123, Q1: 2, ...}}
+        teams[game.visitorNickname].seasons[season].push(weekScore1); 
+      })
     })
-
-    //convert object of teams to array of teams for insertMany
+    
+      //convert object of teams to array of teams for insertMany
     const arrayOfTeams = Object.keys(teams).map(teamName => ({
       name: teamName,
       ...teams[teamName],
       seasons: addByeWeek(teams[teamName].seasons)
     }))
-
+  
     console.log(arrayOfTeams);
     Team.insertMany(arrayOfTeams, (err, docs) => {
       console.log('docs', docs)
     })
-  })
 })
 
 function addByeWeek(seasons) {
@@ -125,8 +126,8 @@ function getWeek(date, weeks) {
 
 function populateWeeks(seed) {
   const weeks =[]
-  const startDate = moment(1536279600000).subtract(1, 'day');
-  const endDate = moment(1536279600000).add(5, 'days');
+  const startDate = moment(seed).subtract(1, 'day');
+  const endDate = moment(seed).add(5, 'days');
 
   for (let i = 0; i < 17; i++) {
     weeks.push({
