@@ -1,0 +1,8 @@
+.sass-cache
+.idea
+yarn-error.log
+node_modules
+build
+.vscode/
+.DS_Store
+*/.DS_Store
