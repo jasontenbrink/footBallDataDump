@@ -1,21 +1,16 @@
 'use strict';
 
-require('dotenv').load({silent: true});
 const express = require('express');
 const app = express();
 const bodyParser = require('body-parser');
-const path = require('path');
 const util = require ('util');
 const mongoose = require('mongoose');
 const axios = require('axios');
 const moment = require('moment')
 
-
-
 const db = mongoose.connect('mongodb://localhost/nfl_teams');
 
 const Schema = mongoose.Schema;
-const ObjectId = Schema.ObjectId;
 
 const teamSchema = new Schema({
      name: String,
@@ -53,7 +48,7 @@ Promise.all(seasons.map(season => axios.get(`https://api.ngs.nfl.com/league/sche
           };
         }
   
-        const weekScore = getWeekandScore('home', game, weeks);  //return {week3: {opponent: chiefs, gameId: 123, Q1: 2, ...}}
+        const weekScore = getWeekandScore('home', game, weeks);  
         teams[game.homeNickname].seasons[season].push(weekScore);
   
         if(!teams[game.visitorNickname]) {
@@ -67,7 +62,7 @@ Promise.all(seasons.map(season => axios.get(`https://api.ngs.nfl.com/league/sche
           };
         }
   
-        const weekScore1 = getWeekandScore('visitor', game, weeks);  //return {week3: {opponent: chiefs, gameId: 123, Q1: 2, ...}}
+        const weekScore1 = getWeekandScore('visitor', game, weeks);  
         teams[game.visitorNickname].seasons[season].push(weekScore1); 
       })
     })
@@ -79,7 +74,6 @@ Promise.all(seasons.map(season => axios.get(`https://api.ngs.nfl.com/league/sche
       seasons: addByeWeek(teams[teamName].seasons)
     }))
   
-    console.log(arrayOfTeams);
     Team.insertMany(arrayOfTeams, (err, docs) => {
       console.log('docs', docs)
     })
@@ -115,8 +109,6 @@ function getWeekandScore(homeOrVisitor, game, weeks) {
 }
 
 function getWeek(date, weeks) {
-  //Thursday through Monday are 1 week.  first week starts on date of first game in response from nfl api.
-  //at top of loop grab first date and generate a range of dates for all 17 weeks
   const gameDate = moment(date)
   const week = weeks.find(week => {
     return week.startDate < gameDate && gameDate < week.endDate 
